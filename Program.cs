@@ -106,7 +106,7 @@ limit:      Number of objects to delete. Specify 0 to just perform a count.");
                 count++;
                 if (count % 10000 == 0)
                 {
-                    int percent = count * 100 / total;
+                    int percent = (int)((long)count * 100 / total);
                     Console.WriteLine($"Count: {count}/{total} ({percent}%)");
                 }
             }
