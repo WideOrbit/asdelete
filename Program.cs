@@ -32,7 +32,19 @@ namespace asdelete
 
             if (args.Length != 6 || !int.TryParse(args[1], out port) || !int.TryParse(args[4], out days) || !int.TryParse(args[5], out limit))
             {
-                Console.WriteLine("Usage: asdelete <host> <port> <namespace> <set> <days> <limit>");
+                Console.WriteLine(
+@"Tool for pre-empty deletion of Aerospike objects that will soon be deleted due to their TTL.
+
+Version 1.0
+
+Usage: asdelete <host> <port> <namespace> <set> <days> <limit>
+
+host:       Aerospike server.
+port:       Aeropsike port.
+namespace:  Aeropsike namespace.
+set:        Aeropsike data set name.
+days:       Days into the future - should be a *positive* integer.
+limit:      Number of objects to delete. Specify 0 to just perform a count.");
                 return 1;
             }
 
@@ -45,7 +57,7 @@ namespace asdelete
         {
             Console.WriteLine($"Host: {host}, Port: {port}, Namespace: {asnamespace}, Set: {set}, Days: {days}, Limit: {limit}");
 
-            oldTime = DateTime.UtcNow.AddDays(-days);
+            oldTime = DateTime.UtcNow.AddDays(days);
             Console.WriteLine("Date: " + oldTime);
 
             limitDeletes = limit;
