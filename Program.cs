@@ -11,9 +11,9 @@ namespace asdelete
     class Program
     {
         static AerospikeClient client;
-        static int count, total;
+        static long count, total;
         static DateTime oldTime;
-        static int limitDeletes;
+        static long limitDeletes;
         static bool verbose;
 
         static int Main(string[] args)
@@ -28,9 +28,10 @@ namespace asdelete
                 verbose = false;
             }
 
-            int port, days, limit;
+            int port, days;
+            long limit;
 
-            if (args.Length != 6 || !int.TryParse(args[1], out port) || !int.TryParse(args[4], out days) || !int.TryParse(args[5], out limit))
+            if (args.Length != 6 || !int.TryParse(args[1], out port) || !int.TryParse(args[4], out days) || !long.TryParse(args[5], out limit))
             {
                 Console.WriteLine(
 @"Tool for pre-empty deletion of Aerospike objects that will soon be deleted due to their TTL.
@@ -44,7 +45,7 @@ port:       Aeropsike port.
 namespace:  Aeropsike namespace.
 set:        Aeropsike data set name.
 days:       Days into the future - should be a *positive* integer.
-limit:      Number of objects to delete. Specify 0 to just perform a count.");
+limit:      Maximum number of objects to delete. Specify 0 to just perform a count.");
                 return 1;
             }
 
@@ -53,7 +54,7 @@ limit:      Number of objects to delete. Specify 0 to just perform a count.");
             return 0;
         }
 
-        static void Delete(string host, int port, string asnamespace, string set, int days, int limit)
+        static void Delete(string host, int port, string asnamespace, string set, int days, long limit)
         {
             Console.WriteLine($"Host: {host}, Port: {port}, Namespace: {asnamespace}, Set: {set}, Days: {days}, Limit: {limit}");
 
@@ -106,7 +107,7 @@ limit:      Number of objects to delete. Specify 0 to just perform a count.");
                 count++;
                 if (count % 10000 == 0)
                 {
-                    int percent = (int)((long)count * 100 / total);
+                    long percent = count * 100 / total;
                     Console.WriteLine($"Count: {count}/{total} ({percent}%)");
                 }
             }
