@@ -12,7 +12,7 @@ namespace asdelete
     {
         static AerospikeClient client;
         static long count, total;
-        static DateTime oldTime;
+        static int thresholdTime;
         static long deleteLimit;
         static bool verbose;
 
@@ -36,7 +36,7 @@ namespace asdelete
                 Console.WriteLine(
 @"Tool for pre-empty deletion of Aerospike objects that will soon be deleted due to their TTL.
 
-Version 1.0
+Version 1.1
 
 Usage: asdelete <host> <port> <namespace> <set> <days> <limit>
 
@@ -58,8 +58,11 @@ limit:      Maximum number of objects to delete. Specify 0 to just perform a cou
         {
             Console.WriteLine($"Host: {host}, Port: {port}, Namespace: {asnamespace}, Set: {set}, Days: {days}, Limit: {limit}");
 
-            oldTime = DateTime.UtcNow.AddDays(days);
-            Console.WriteLine("Date: " + oldTime);
+            DateTime dt = DateTime.UtcNow.AddDays(days);
+            Console.WriteLine("Date: {dt}");
+
+            thresholdTime = UtcDateTimeToASTime(dt);
+
 
             deleteLimit = limit;
             count = total = 0;
@@ -91,16 +94,15 @@ limit:      Maximum number of objects to delete. Specify 0 to just perform a cou
 
             total++;
 
-            DateTime dt = ASTimeToUtcDateTime(record.expiration);
-            if (dt < oldTime)
+            if (record.expiration < thresholdTime)
             {
                 if (count < deleteLimit)
                 {
                     if (verbose)
                     {
-                        Log("Expiration " + dt);
+                        Log("Expiration: " + ASTimeToUtcDateTime(record.expiration));
                     }
-                    //var token = new CancellationToken();
+
                     client.Delete(new WritePolicy(), key);
                 }
 
@@ -111,6 +113,13 @@ limit:      Maximum number of objects to delete. Specify 0 to just perform a cou
                     Console.WriteLine($"Count: {count}/{total} ({percent}%)");
                 }
             }
+        }
+
+        static int UtcDateTimeToASTime(DateTime dt)
+        {
+            TimeSpan ts = dt - new DateTime(2010, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc);
+
+            return (int)ts.TotalSeconds;
         }
 
         static DateTime ASTimeToUtcDateTime(double asTime)
