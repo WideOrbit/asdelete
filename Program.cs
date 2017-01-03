@@ -78,7 +78,7 @@ limit:      Maximum number of objects to delete. Specify 0 to just perform a cou
                 // in the cluster and return the record Digest to the call back object
                 client.ScanAll(scanPolicy, asnamespace, set, ScanCallback, new string[] { });
 
-                Log("Deleted " + count + " records from set " + set);
+                Log($"Deleted {count} records from set {set}");
             }
             catch (AerospikeException ex)
             {
