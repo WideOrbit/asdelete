@@ -13,7 +13,7 @@ namespace asdelete
         static AerospikeClient client;
         static long count, total;
         static DateTime oldTime;
-        static long limitDeletes;
+        static long deleteLimit;
         static bool verbose;
 
         static int Main(string[] args)
@@ -61,7 +61,7 @@ limit:      Maximum number of objects to delete. Specify 0 to just perform a cou
             oldTime = DateTime.UtcNow.AddDays(days);
             Console.WriteLine("Date: " + oldTime);
 
-            limitDeletes = limit;
+            deleteLimit = limit;
             count = total = 0;
 
             try
@@ -94,7 +94,7 @@ limit:      Maximum number of objects to delete. Specify 0 to just perform a cou
             DateTime dt = ASTimeToUtcDateTime(record.expiration);
             if (dt < oldTime)
             {
-                if (count < limitDeletes)
+                if (count < deleteLimit)
                 {
                     if (verbose)
                     {
