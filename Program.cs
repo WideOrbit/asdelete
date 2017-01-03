@@ -38,7 +38,9 @@ namespace asdelete
 
 Version 1.1
 
-Usage: asdelete <host> <port> <namespace> <set> <days> <limit>
+Usage: asdelete [-verbose] <host> <port> <namespace> <set> <days> <limit>
+
+-verbose:   Print expiration time for all objects that are deleted.
 
 host:       Aerospike server.
 port:       Aeropsike port.
