@@ -61,7 +61,7 @@ limit:      Maximum number of objects to delete. Specify 0 to just perform a cou
             Console.WriteLine($"Host: {host}, Port: {port}, Namespace: {asnamespace}, Set: {set}, Days: {days}, Limit: {limit}");
 
             DateTime dt = DateTime.UtcNow.AddDays(days);
-            Console.WriteLine("Date: {dt}");
+            Console.WriteLine($"Date: {dt}");
 
             thresholdTime = UtcDateTimeToASTime(dt);
 
