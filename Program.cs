@@ -105,7 +105,15 @@ limit:      Maximum number of objects to delete. Specify 0 to just perform a cou
                         Log("Expiration: " + ASTimeToUtcDateTime(record.expiration));
                     }
 
-                    client.Delete(new WritePolicy(), key);
+                    try
+                    {
+                        client.Delete(new WritePolicy(), key);
+                    }
+                    catch (AerospikeException ex)
+                    {
+                        Log(ex.ToString());
+                        return;
+                    }
                 }
 
                 count++;
