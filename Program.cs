@@ -10,35 +10,42 @@ namespace asdelete
 {
     class Program
     {
-        static AerospikeClient client;
-        static long count, total;
-        static int thresholdTime;
-        static long deleteLimit;
-        static bool verbose;
+        static AerospikeClient _client;
+        static long _count, _total;
+        static int _thresholdTime;
+        static long _deleteLimit;
+        static long _deleteRangeStart;
+        static long _deleteRangeEnd;
+        static bool _verbose;
 
         static int Main(string[] args)
         {
             if (args.Contains("-verbose"))
             {
-                verbose = true;
+                _verbose = true;
                 args = args.Where(a => a != "-verbose").ToArray();
             }
             else
             {
-                verbose = false;
+                _verbose = false;
             }
 
             int port, days;
-            long limit;
+            long limit, rangeStart = -1, rangeEnd = -1;
 
-            if (args.Length != 6 || !int.TryParse(args[1], out port) || !int.TryParse(args[4], out days) || !long.TryParse(args[5], out limit))
+            if (
+                (args.Length != 6 || !int.TryParse(args[1], out port) || !int.TryParse(args[4], out days) || !long.TryParse(args[5], out limit))
+                &&
+                (args.Length != 8 || !int.TryParse(args[1], out port) || !int.TryParse(args[4], out days) || !long.TryParse(args[5], out limit)
+                    || !long.TryParse(args[6], out rangeStart) || !long.TryParse(args[7], out rangeEnd))
+                )
             {
                 Console.WriteLine(
 @"Tool for pre-empty deletion of Aerospike objects that will soon be deleted due to their TTL.
 
-Version 1.1
+Version 1.2
 
-Usage: asdelete [-verbose] <host> <port> <namespace> <set> <days> <limit>
+Usage: asdelete [-verbose] <host> <port> <namespace> <set> <days> <limit> [rangestart] [rangeend]
 
 -verbose:   Print expiration time for all objects that are deleted.
 
@@ -47,38 +54,42 @@ port:       Aeropsike port.
 namespace:  Aeropsike namespace.
 set:        Aeropsike data set name.
 days:       Days into the future - should be a *positive* integer.
-limit:      Maximum number of objects to delete. Specify 0 to just perform a count.");
+limit:      Maximum number of objects to delete.Specify 0 to just perform a count.
+rangestart: Lower bound of date range (exclusive). Optional.
+rangeend:   Upper bound of date range (inclusive). Optional.");
                 return 1;
             }
 
-            Delete(args[0], port, args[2], args[3], days, limit);
+            Delete(args[0], port, args[2], args[3], days, limit, rangeStart, rangeEnd);
 
             return 0;
         }
 
-        static void Delete(string host, int port, string asnamespace, string set, int days, long limit)
+        static void Delete(string host, int port, string asnamespace, string set, int days, long limit, long rangeStart, long rangeEnd)
         {
-            Console.WriteLine($"Host: {host}, Port: {port}, Namespace: {asnamespace}, Set: {set}, Days: {days}, Limit: {limit}");
+            Console.WriteLine($"Host: {host}, Port: {port}, Namespace: {asnamespace}, Set: {set}, Days: {days}, Limit: {limit}, RangeStart: {rangeStart}, RangeEnd: {rangeEnd}");
 
             DateTime dt = DateTime.UtcNow.AddDays(days);
             Console.WriteLine($"Date: {dt}");
 
-            thresholdTime = UtcDateTimeToASTime(dt);
+            _thresholdTime = UtcDateTimeToASTime(dt);
 
 
-            deleteLimit = limit;
-            count = total = 0;
+            _deleteLimit = limit;
+            _deleteRangeStart = rangeStart;
+            _deleteRangeEnd = rangeEnd;
+            _count = _total = 0;
 
             try
             {
-                client = new AerospikeClient(host, port);
+                _client = new AerospikeClient(host, port);
 
                 ScanPolicy scanPolicy = new ScanPolicy();
                 // Scan the entire Set using ScanAll(). This will scan each node
                 // in the cluster and return the record Digest to the call back object
-                client.ScanAll(scanPolicy, asnamespace, set, ScanCallback, new string[] { });
+                _client.ScanAll(scanPolicy, asnamespace, set, ScanCallback, new string[] { });
 
-                Log($"Deleted {count} records from set {set}");
+                Log($"Deleted {_count} records from set {set}");
             }
             catch (AerospikeException ex)
             {
@@ -94,20 +105,21 @@ limit:      Maximum number of objects to delete. Specify 0 to just perform a cou
         {
             // For each Digest returned, delete it using Delete()
 
-            total++;
+            _total++;
 
-            if (record.expiration < thresholdTime)
+            if (record.expiration < _thresholdTime ||
+                (record.expiration > _deleteRangeStart && record.expiration <= _deleteRangeEnd))
             {
-                if (count < deleteLimit)
+                if (_count < _deleteLimit)
                 {
-                    if (verbose)
+                    if (_verbose)
                     {
                         Log("Expiration: " + ASTimeToUtcDateTime(record.expiration));
                     }
 
                     try
                     {
-                        client.Delete(new WritePolicy(), key);
+                        _client.Delete(new WritePolicy(), key);
                     }
                     catch (AerospikeException ex)
                     {
@@ -116,11 +128,11 @@ limit:      Maximum number of objects to delete. Specify 0 to just perform a cou
                     }
                 }
 
-                count++;
-                if (count % 10000 == 0)
+                _count++;
+                if (_count % 10000 == 0)
                 {
-                    long percent = count * 100 / total;
-                    Console.WriteLine($"Count: {count}/{total} ({percent}%)");
+                    long percent = _count * 100 / _total;
+                    Console.WriteLine($"Count: {_count}/{_total} ({percent}%)");
                 }
             }
         }
