@@ -11,7 +11,7 @@ namespace asdelete
     class Program
     {
         static AerospikeClient _client;
-        static long _count, _total;
+        static long _count, _rewritecount, _total;
         static int _thresholdTime;
         static long _deleteLimit;
         static long _deleteRangeStart;
@@ -78,7 +78,7 @@ rangeend:   Upper bound of date range (inclusive). Optional.");
             _deleteLimit = limit;
             _deleteRangeStart = rangeStart;
             _deleteRangeEnd = rangeEnd;
-            _count = _total = 0;
+            _count = _rewritecount = _total = 0;
 
             try
             {
@@ -89,7 +89,7 @@ rangeend:   Upper bound of date range (inclusive). Optional.");
                 // in the cluster and return the record Digest to the call back object
                 _client.ScanAll(scanPolicy, asnamespace, set, ScanCallback, new string[] { });
 
-                Log($"Deleted {_count} records from set {set}");
+                Log($"Deleted {_count} records from set {set}. Rewrites: {_rewritecount}");
             }
             catch (AerospikeException ex)
             {
@@ -119,7 +119,26 @@ rangeend:   Upper bound of date range (inclusive). Optional.");
 
                     try
                     {
-                        _client.Delete(new WritePolicy(), key);
+                        var firstbinkey = record.bins.Keys.FirstOrDefault();
+                        if (firstbinkey == null)
+                        {
+                            if (_verbose)
+                            {
+                                Log("Using delete.");
+                            }
+                            _client.Delete(new WritePolicy(), key);
+                        }
+                        else
+                        {
+                            if (_verbose)
+                            {
+                                Log("Using rewrite.");
+                            }
+                            WritePolicy wp = new WritePolicy();
+                            wp.expiration = 1;
+                            record.bins[firstbinkey] = record.bins[firstbinkey];
+                            _rewritecount++;
+                        }
                     }
                     catch (AerospikeException ex)
                     {
@@ -132,7 +151,7 @@ rangeend:   Upper bound of date range (inclusive). Optional.");
                 if (_count % 10000 == 0)
                 {
                     long percent = _count * 100 / _total;
-                    Console.WriteLine($"Count: {_count}/{_total} ({percent}%)");
+                    Console.WriteLine($"Count: {_count}/{_total} ({percent}%) ({_rewritecount} deletes was rewrites)");
                 }
             }
         }
