@@ -1,6 +1,7 @@
 ﻿using Aerospike.Client;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading;
@@ -17,6 +18,7 @@ namespace asdelete
         static long _deleteRangeStart;
         static long _deleteRangeEnd;
         static bool _verbose;
+        static Stopwatch _watch;
 
         static int Main(string[] args)
         {
@@ -87,7 +89,10 @@ rangeend:   Upper bound of date range (inclusive). Optional.");
                 ScanPolicy scanPolicy = new ScanPolicy();
                 // Scan the entire Set using ScanAll(). This will scan each node
                 // in the cluster and return the record Digest to the call back object
+
+                _watch = Stopwatch.StartNew();
                 _client.ScanAll(scanPolicy, asnamespace, set, ScanCallback, new string[] { });
+                _watch.Stop();
 
                 Log($"Deleted {_count} records from set {set}. Rewrites: {_rewritecount}");
             }
@@ -119,7 +124,8 @@ rangeend:   Upper bound of date range (inclusive). Optional.");
 
                     try
                     {
-                        var firstbinkey = record.bins.Keys.FirstOrDefault();
+                        //var firstbinkey = record.bins.Keys.FirstOrDefault();
+                        string firstbinkey = null;
                         if (firstbinkey == null)
                         {
                             if (_verbose)
@@ -151,7 +157,9 @@ rangeend:   Upper bound of date range (inclusive). Optional.");
                 if (_count % 10000 == 0)
                 {
                     long percent = _count * 100 / _total;
-                    Console.WriteLine($"Count: {_count}/{_total} ({percent}%) ({_rewritecount} deletes was rewrites)");
+                    long rate = _count * 1000 / _watch.ElapsedMilliseconds;
+                    Console.WriteLine($"Count: {_count}/{_total} ({percent}%) ({_rewritecount} deletes was rewrites). Current rate: {rate}/s.");
+                    _watch = Stopwatch.StartNew();
                 }
             }
         }
