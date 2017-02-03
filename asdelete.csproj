@@ -34,7 +34,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="AerospikeClient">
-      <HintPath>..\..\ad2\Library\3rd_party\AerospikeClient.dll</HintPath>
+      <HintPath>lib\AerospikeClient.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
